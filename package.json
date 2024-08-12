@@ -1,8 +1,9 @@
 {
   "name": "node-chessboard",
   "author": "ausgore",
+  "main": "lib/index.js",
   "license": "MIT",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "keywords": [
     "chess",
     "chessboard"
