@@ -20,5 +20,5 @@ declare class Chessboard implements ChessboardProps {
     png(path: string): Promise<void>;
     setTheme(theme: Theme): void;
 }
-export { Theme as PieceStyle };
+export { Theme };
 export default Chessboard;

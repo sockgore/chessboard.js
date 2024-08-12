@@ -123,5 +123,5 @@ class Chessboard implements ChessboardProps {
 
 }
 
-export { Theme as PieceStyle };
+export { Theme };
 export default Chessboard;
