@@ -1,5 +1,5 @@
 import { Chess, Square } from "chess.js";
-import { ChessboardProps, Theme } from "./types";
+import { ChessboardOptions, ChessboardProps, Theme } from "./types";
 import { createCanvas, loadImage } from "@napi-rs/canvas";
 import path from "path";
 import fs from "fs/promises";
@@ -17,27 +17,23 @@ class Chessboard implements ChessboardProps {
 	public style = Theme.Modern;
 	public flipped = false;
 
-	constructor(options?: ChessboardProps) {
+	constructor(options?: ChessboardOptions) {
 		for (const key in options) this[key] = options[key];
 	}
 
-	/** Loads PGN into Chess.js instance */
 	public loadPGN(pgn: string) {
 		this.chess.loadPgn(pgn);
 	}
 
-	/** Loads FEN into Chess.js instance */
 	public loadFEN(fen: string) {
 		this.chess.board();
 		this.chess.load(fen);
 	}
 
-	/** The squares to highlight */
-	public higlightSquares(...squares: Square[]) {
+	public highlightSquares(...squares: Square[]) {
 		this.highlighted = squares;
 	}
 
-	/** Generates buffer image */
 	public async buffer(mime: "image/png" | "image/jpeg" | "image/webp" | "image/avif" = "image/png"): Promise<Buffer> {
 		const width = this.size + this.padding[1] + this.padding[3];
 		const height = this.size + this.padding[0] + this.padding[2];
@@ -105,13 +101,11 @@ class Chessboard implements ChessboardProps {
 		return canvas.toBuffer(mime as any);
 	}
 
-	/** Generates png image */
 	public async png(path: string) {
 		const buffer = await this.buffer();
-		return fs.writeFile(path, buffer);
+		fs.writeFile(path, buffer);
 	}
 
-	/** Set the theme of the board */
 	public setTheme(theme: Theme) {
 		this.style = theme;
 

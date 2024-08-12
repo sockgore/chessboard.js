@@ -2,11 +2,12 @@
   "name": "node-chessboard",
   "author": "ausgore",
   "license": "MIT",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "keywords": [
     "chess",
     "chessboard"
   ],
+  "types": "lib/index.d.ts",
   "dependencies": {
     "@napi-rs/canvas": "^0.1.53",
     "chess.js": "^1.0.0-beta.8",
