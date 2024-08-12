@@ -14,5 +14,5 @@ export interface ChessboardProps {
     /** Whether the board should be flipped */
     flipped?: boolean;
     /** The desired style of the chess pieces */
-    theme?: Theme;
+    style?: Theme;
 }

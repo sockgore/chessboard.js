@@ -14,7 +14,7 @@ class Chessboard implements ChessboardProps {
 	public light = "rgb(238,238,210)";
 	public dark = "rgb(118,150,86)";
 	public highlight = "rgba(255, 255, 52, 0.5)";
-	public theme = Theme.Modern;
+	public style = Theme.Modern;
 	public flipped = false;
 
 	constructor(options?: ChessboardProps) {
@@ -96,7 +96,7 @@ class Chessboard implements ChessboardProps {
 				const piece = this.chess.get(coords);
 				// Draw the chess piece on the square
 				if (piece) {
-					const image = await loadImage(path.join(__dirname, `../public/${this.theme}/${piece.color}${piece.type}.png`));
+					const image = await loadImage(path.join(__dirname, `../public/${this.style}/${piece.color}${piece.type}.png`));
 					await ctx.drawImage(image, x, y, this.size / 8, this.size / 8);
 				}
 			}
@@ -113,7 +113,7 @@ class Chessboard implements ChessboardProps {
 
 	/** Set the theme of the board */
 	public setTheme(theme: Theme) {
-		this.theme = theme;
+		this.style = theme;
 
 		if (theme == Theme.Modern) {
 			this.light = "rgb(238,238,210)";

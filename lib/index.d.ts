@@ -10,7 +10,7 @@ declare class Chessboard implements ChessboardProps {
     light: string;
     dark: string;
     highlight: string;
-    theme: Theme;
+    style: Theme;
     flipped: boolean;
     constructor(options?: ChessboardProps);
     /** Loads PGN into Chess.js instance */
