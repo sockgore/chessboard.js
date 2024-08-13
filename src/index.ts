@@ -1,8 +1,9 @@
 import { Chess, Square } from "chess.js";
-import { ChessboardOptions, ChessboardProps, Theme } from "./types";
-import { createCanvas, loadImage } from "@napi-rs/canvas";
+import { BufferOptions, ChessboardOptions, ChessboardProps, Theme } from "./types";
+import { createCanvas, loadImage, SKRSContext2D } from "@napi-rs/canvas";
+import GIFEncoder from "gifencoder";
 import path from "path";
-import fs from "fs/promises";
+import { PassThrough } from "stream";
 
 class Chessboard implements ChessboardProps {
 	private cols = "abcdefgh";
@@ -21,6 +22,29 @@ class Chessboard implements ChessboardProps {
 		for (const key in options) this[key] = options[key];
 	}
 
+	private get width() {
+		return this.size + this.padding[1] + this.padding[3];
+	}
+
+	private get height() {
+		return this.size + this.padding[0] + this.padding[2];
+	}
+
+	public setTheme(theme: Theme) {
+		this.style = theme;
+
+		if (theme == Theme.Modern) {
+			this.light = "rgb(238,238,210)";
+			this.dark = "rgb(118,150,86)";
+			this.highlight = "rgba(255, 255, 52, 0.5)";
+		}
+		else if (theme == Theme.Wood) {
+			this.light = "rgb(192,166,132)";
+			this.dark = "rgb(131,95,66)";
+			this.highlight = "rgba(255, 255, 52, 0.5)";
+		}
+	}
+
 	public loadPGN(pgn: string) {
 		this.chess.loadPgn(pgn);
 	}
@@ -34,15 +58,9 @@ class Chessboard implements ChessboardProps {
 		this.highlighted = squares;
 	}
 
-	public async buffer(mime: "image/png" | "image/jpeg" | "image/webp" | "image/avif" = "image/png"): Promise<Buffer> {
-		const width = this.size + this.padding[1] + this.padding[3];
-		const height = this.size + this.padding[0] + this.padding[2];
-
-		const canvas = createCanvas(width, height);
-		const ctx = canvas.getContext("2d");
-
+	private async drawBoard(ctx: SKRSContext2D) {
 		ctx.beginPath();
-		ctx.rect(0, 0, width, height);
+		ctx.rect(0, 0, this.width, this.height);
 		ctx.fillStyle = this.light;
 		ctx.fill();
 
@@ -98,30 +116,80 @@ class Chessboard implements ChessboardProps {
 			}
 		}
 
-		return canvas.toBuffer(mime as any);
+		return ctx;
 	}
 
-	public async png(path: string) {
-		const buffer = await this.buffer();
-		fs.writeFile(path, buffer);
+	/**
+	 * Returns a `Chess` instance representing the state of the game up to the specified move.
+	 * This method generates a snapshot of the chess game as it was after the given move number in the PGN string.
+	 * @param move - The move number in the PGN string up to which the game should be captured. 
+	 *               For example:
+	 *               - If `move` is `2`, it returns the `Chess` instance with the game state reflecting all moves up to and including the second move.
+	 *               - If `move` is `4`, it returns the `Chess` instance with the game state reflecting all moves up to and including the fourth move.
+	 * @returns A `Chess` instance with the game state up to the provided move.
+	 */
+	public getSnapshot(move: number) {
+		const moves = this.chess.history().slice(0, move);
+		const pgn = moves.reduce((acc, curr, index) => `${acc} ${index % 2 === 0 ? `${Math.floor(index / 2) + 1}.` : ""} ${curr}`.trim(), "");
+		const chess = new Chess();
+		chess.loadPgn(pgn);
+		return chess;
 	}
 
-	public setTheme(theme: Theme) {
-		this.style = theme;
+	public async buffer(mime: "image/png" | "image/jpeg" | "image/webp" | "image/avif" | "image/gif" = "image/png", options?: BufferOptions): Promise<Buffer> {
+		if (mime != "image/gif") {
+			const { length } = this.chess.history();
+			const board = options?.move ? new Chessboard({ dark: this.dark, flipped: this.flipped, highlight: this.highlight, light: this.light, size: this.size, style: this.style }) : this;
+			if (options?.move) board.loadPGN(this.getSnapshot(options.move <= length ? options.move : length).pgn());
+			if (options?.highlight) {
+				const latest = board.chess.history({ verbose: true }).pop();
+				if (latest) board.highlightSquares(latest.from, latest.to);
+			}
 
-		if (theme == Theme.Modern) {
-			this.light = "rgb(238,238,210)";
-			this.dark = "rgb(118,150,86)";
-			this.highlight = "rgba(255, 255, 52, 0.5)";
+			const canvas = createCanvas(this.width, this.height);
+			const ctx = canvas.getContext("2d");
+
+			await board.drawBoard(ctx);
+			return canvas.toBuffer(mime as any);
 		}
-		else if (theme == Theme.Wood) {
-			this.light = "rgb(192,166,132)";
-			this.dark = "rgb(131,95,66)";
-			this.highlight = "rgba(255, 255, 52, 0.5)";
+		else {
+			return new Promise(async (resolve, reject) => {
+				const encoder = new GIFEncoder(this.width, this.height);
+				const passThrough = new PassThrough();
+				const chunks: Uint8Array[] = [];
+	
+				passThrough.on("data", chunk => chunks.push(chunk));
+				passThrough.on("end", () => resolve(Buffer.concat(chunks)));
+				passThrough.on("error", reject);
+	
+				encoder.start();
+				encoder.setRepeat(0);
+				encoder.setDelay(options?.delay ?? 500);
+				encoder.createReadStream().pipe(passThrough);
+	
+				const canvas = createCanvas(this.width, this.height);
+				const ctx = canvas.getContext("2d");
+				const moves = this.chess.history();
+				const length = options?.move ? options?.move <= moves.length ? options?.move : moves.length : moves.length;
+
+				for (let i = 0; i <= length; i++) {
+					const snapshot = this.getSnapshot(i);
+					
+					const board = new Chessboard({ dark: this.dark, flipped: this.flipped, highlight: this.highlight, light: this.light, size: this.size, style: this.style });
+					board.loadPGN(snapshot.pgn());
+					const latest = board.chess.history({ verbose: true }).pop();
+					if (latest) board.highlightSquares(latest.from, latest.to);
+					
+					encoder.addFrame(await board.drawBoard(ctx) as any);
+				}
+
+				encoder.finish();
+			});
 		}
 	}
-
 }
 
-export { Theme };
-export default Chessboard;
+export {
+	Chessboard,
+	Theme
+}
