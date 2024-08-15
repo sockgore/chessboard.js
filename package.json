@@ -3,11 +3,15 @@
   "author": "ausgore",
   "main": "lib/index.js",
   "license": "MIT",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "keywords": [
     "chess",
     "chessboard"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sockgore/node-chessboard.git"
+  },
   "types": "lib/index.d.ts",
   "dependencies": {
     "@napi-rs/canvas": "^0.1.53",
